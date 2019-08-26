@@ -1,0 +1,36 @@
+{
+  "name": "@gaus/gaus-client",
+  "version": "0.0.1",
+  "description": "Gaus client",
+  "dependencies": {
+    "@types/jest": "24.0.12",
+    "@types/node": "12.7.2",
+    "typescript": "3.4.5"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/"
+  ],
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "1.13.0",
+    "@typescript-eslint/parser": "1.13.0",
+    "eslint": "6.1.0",
+    "eslint-config-prettier": "4.2.0",
+    "eslint-plugin-import": "2.18.2",
+    "eslint-plugin-jest": "22.5.1",
+    "jest": "24.8.0",
+    "prettier": "1.14.3",
+    "ts-jest": "24.0.2"
+  },
+  "scripts": {
+    "clean": "rm -rf ./dist",
+    "build": "tsc",
+    "lint": "eslint ./src/ --ext=ts --ext=spec.ts",
+    "format:check": "prettier --config ./.prettierrc --list-different \"./**/*{.ts,.js,.json,.css,.scss}\"",
+    "format:fix": "prettier --config ./.prettierrc --write \"./**/*{.ts,.js,.json,.css,.scss}\"",
+    "test": "jest",
+    "test:ci": "jest --ci",
+    "prepare": "echo 'Building @gaus/gaus-client' && npm run build"
+  }
+}
