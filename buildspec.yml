@@ -1,0 +1,14 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - npm install
+  pre_build:
+    commands:
+      - npm run lint
+      - npm run format:check
+  build:
+    commands:
+      - npm run build
+      - npm run test:ci
