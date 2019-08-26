@@ -1,8 +1,8 @@
 import { GausClient } from './gaus-client';
 
-describe('GausClient', () => {
-  it('instantiates', () => {
-    let client = new GausClient();
+describe('GausClient', (): void => {
+  it('instantiates', (): void => {
+    const client = new GausClient();
     expect(client).toBeTruthy();
   });
 });
