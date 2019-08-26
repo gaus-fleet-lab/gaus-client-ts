@@ -1,5 +1,4 @@
 {
   "editor.formatOnSave": true,
-  "javascript.format.enable": false,
-  "http.proxy": "http://proxy.global.sonyericsson.net:8080/"
+  "javascript.format.enable": false
 }
