@@ -1,6 +1,8 @@
 type GausProductGUID = string;
+type GausProductAccessKey = string;
+type GausProductSecretKey = string;
 
 interface GausProductAuthParameters {
-  accessKey: string;
-  secretKey: string;
+  accessKey: GausProductAccessKey;
+  secretKey: GausProductSecretKey;
 }

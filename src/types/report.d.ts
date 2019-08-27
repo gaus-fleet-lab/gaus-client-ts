@@ -1,4 +1,5 @@
 type GausReportVersion = string;
+type DateString = string;
 
 interface GausReportData {
   v_strings: { [key: string]: string };
@@ -6,11 +7,11 @@ interface GausReportData {
   type: string;
   v_floats: { [key: string]: number };
   tags: { [key: string]: string };
-  ts: string;
+  ts: DateString;
 }
 interface GausReportHeader {
   seqNo: number;
-  ts: string;
+  ts: DateString;
   tags: { [key: string]: string };
 }
 interface GausReport {

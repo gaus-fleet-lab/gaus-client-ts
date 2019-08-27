@@ -6,16 +6,6 @@ describe('GausClient', (): void => {
     expect(client).toBeTruthy();
   });
 
-  it('instantiates with session', (): void => {
-    const fakeSession = {
-      deviceGUID: 'fakeGausDeviceGUID',
-      productGUID: 'fakeGausProductGUID',
-      token: 'fakeGausToken',
-    };
-    const client = new GausClient(fakeSession);
-    expect(client).toBeTruthy();
-  });
-
   it('register fails with falsy in parameters', (done): void => {
     const client = new GausClient();
     try {
@@ -33,7 +23,7 @@ describe('GausClient', (): void => {
       expect(registerResponse).toBeTruthy();
       done();
     } catch {
-      done.fail(new Error('Should throw error'));
+      done.fail(new Error('Should not throw error'));
     }
   });
 
@@ -47,14 +37,13 @@ describe('GausClient', (): void => {
     }
   });
 
-  it('authenticate should return with correct in parameters ', (done): void => {
+  it('authenticate should not throw exception with correct in parameters ', (done): void => {
     const client = new GausClient();
     try {
-      const session = client.authenticate({ accessKey: 'fakeAK', secretKey: 'fakeSK' });
-      expect(session).toBeTruthy();
+      client.authenticate({ accessKey: 'fakeAK', secretKey: 'fakeSK' });
       done();
     } catch {
-      done.fail(new Error('Should throw error'));
+      done.fail(new Error('Should not throw error'));
     }
   });
 

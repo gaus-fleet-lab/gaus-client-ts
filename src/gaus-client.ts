@@ -1,9 +1,8 @@
 export class GausClient {
+  private _deviceAuthParameters: GausDeviceAuthParameters;
   private _session: GausSession;
 
-  constructor(session?: GausSession) {
-    this._session = session || undefined;
-  }
+  constructor() {}
 
   register(
     productAuthParameters: GausProductAuthParameters,
@@ -17,9 +16,10 @@ export class GausClient {
     }
   }
 
-  authenticate(deviceAuthParameters: GausDeviceAuthParameters): GausSession {
+  authenticate(deviceAuthParameters: GausDeviceAuthParameters): void {
     if (deviceAuthParameters && deviceAuthParameters.accessKey && deviceAuthParameters.secretKey) {
-      return { deviceGUID: '', productGUID: '', token: '' }; // Dummy code
+      this._deviceAuthParameters = deviceAuthParameters;
+      this._session = { deviceGUID: '', productGUID: '', token: '' }; // Dummy code
     } else {
       const error: GausError = { description: 'In parameters not defined' };
       throw error;
@@ -29,21 +29,25 @@ export class GausClient {
   checkForUpdates(): GausUpdate[] {
     if (this._session) {
       return []; // Dummy code
+    } else if (this._deviceAuthParameters) {
+      // auto authenticate
     } else {
-      const error: GausError = { description: 'No session initiated' };
+      const error: GausError = { description: 'No session or device auth params' };
       throw error;
     }
   }
 
   report(deviceGUID: GausDeviceGUID, productGUID: GausProductGUID, report: GausReport): void {
-    if (this._session) {
-      if (deviceGUID && productGUID && report && report.data && report.header && report.version) {
+    if (deviceGUID && productGUID && report && report.data && report.header && report.version) {
+      if (this._session) {
+      } else if (this._deviceAuthParameters) {
+        // auto authenticate here
       } else {
-        const error: GausError = { description: 'In parameters not defined' };
+        const error: GausError = { description: 'No session or device auth params' };
         throw error;
       }
     } else {
-      const error: GausError = { description: 'No session initiated' };
+      const error: GausError = { description: 'In parameters not defined' };
       throw error;
     }
   }

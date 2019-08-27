@@ -1,8 +1,10 @@
 type GausDeviceId = string;
 type GausDeviceGUID = string;
 type GausPollIntervalSeconds = number;
+type GausDeviceAccessKey = string;
+type GausDeviceSecretKey = string;
 
 interface GausDeviceAuthParameters {
-  accessKey: string;
-  secretKey: string;
+  accessKey: GausDeviceAccessKey;
+  secretKey: GausDeviceAccessKey;
 }
