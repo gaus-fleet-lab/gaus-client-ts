@@ -1,3 +1,3 @@
 interface GausError {
-    description : string;
+  description: string;
 }
