@@ -57,11 +57,12 @@ export class GausClient {
     }
   }
 
-  private _authenticate(deviceAuthParameters: GausDeviceAuthParameters): void {
+  private _authenticate(deviceAuthParameters: GausDeviceAuthParameters): GausSession {
     if (deviceAuthParameters && deviceAuthParameters.accessKey && deviceAuthParameters.secretKey) {
       // Make authenticate POST call
       this._deviceAuthParameters = deviceAuthParameters;
       this._session = { deviceGUID: '', productGUID: '', token: '' }; // Dummy code
+      return this._session;
     } else {
       throw new GausError('Device authentication parameters not specified');
     }
