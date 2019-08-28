@@ -27,40 +27,20 @@ describe('GausClient', (): void => {
     }
   });
 
-  it('authenticate fails with falsy in parameters', (done): void => {
-    const client = new GausClient();
-    try {
-      client.authenticate(null);
-      done.fail(new Error('Should throw error'));
-    } catch {
-      done();
-    }
-  });
-
-  it('authenticate should not throw exception with correct in parameters ', (done): void => {
-    const client = new GausClient();
-    try {
-      client.authenticate({ accessKey: 'fakeAK', secretKey: 'fakeSK' });
-      done();
-    } catch {
-      done.fail(new Error('Should not throw error'));
-    }
-  });
-
   it('checkForUpdates fails with no valid session', (done): void => {
     const client = new GausClient();
     try {
-      client.checkForUpdates();
+      client.checkForUpdates(null);
       done.fail(new Error('Should throw error'));
     } catch {
       done();
     }
   });
 
-  it('report fails with no valid in parameters', (done): void => {
+  it('report fails with no valid session', (done): void => {
     const client = new GausClient();
     try {
-      client.report('', '', null);
+      client.report(null, null);
       done.fail(new Error('Should throw error'));
     } catch {
       done();

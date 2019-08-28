@@ -17,35 +17,53 @@ export class GausClient {
     }
   }
 
-  authenticate(deviceAuthParameters: GausDeviceAuthParameters): void {
+  checkForUpdates(deviceAuthParameters: GausDeviceAuthParameters): GausUpdate[] {
+    if (!this._session) {
+      this._authenticate(deviceAuthParameters);
+    }
+
+    try {
+      // Make check-for-updates GET call
+      return [];
+    } catch (error) {
+      // if error is 401 Authentication denined, auto authenticate
+      this._authenticate(deviceAuthParameters);
+      // Make check-for-updates GET call
+      return [];
+
+      // else
+      throw error;
+    }
+  }
+
+  report(deviceAuthParameters: GausDeviceAuthParameters, report: GausReport): void {
+    if (!this._session) {
+      this._authenticate(deviceAuthParameters);
+    }
+
+    if (!report || !report.data || !report.header || !report.version) {
+      throw new GausError('In parameters not defined');
+    }
+
+    try {
+      // Make report POST call
+    } catch (error) {
+      // if error is 401 Authentication denined, auto authenticate
+      this._authenticate(deviceAuthParameters);
+      // Make report POST call
+
+      // else
+      throw error;
+    }
+  }
+
+  private _authenticate(deviceAuthParameters: GausDeviceAuthParameters): void {
     if (deviceAuthParameters && deviceAuthParameters.accessKey && deviceAuthParameters.secretKey) {
+      // Make authenticate POST call
       this._deviceAuthParameters = deviceAuthParameters;
       this._session = { deviceGUID: '', productGUID: '', token: '' }; // Dummy code
     } else {
-      throw new GausError('In parameters not defined');
-    }
-  }
-
-  checkForUpdates(): GausUpdate[] {
-    if (this._session) {
-      return []; // Dummy code
-    } else if (this._deviceAuthParameters) {
-      // auto authenticate
-    } else {
-      throw new GausError('No session or device auth params');
-    }
-  }
-
-  report(deviceGUID: GausDeviceGUID, productGUID: GausProductGUID, report: GausReport): void {
-    if (deviceGUID && productGUID && report && report.data && report.header && report.version) {
-      if (this._session) {
-      } else if (this._deviceAuthParameters) {
-        // auto authenticate here
-      } else {
-        throw new GausError('No session or device auth params');
-      }
-    } else {
-      throw new GausError('In parameters not defined');
+      throw new GausError('Device authentication parameters not specified');
     }
   }
 }
