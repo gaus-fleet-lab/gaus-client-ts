@@ -1,3 +1,5 @@
+import { GausError } from './helpers/gaus-error';
+
 export class GausClient {
   private _deviceAuthParameters: GausDeviceAuthParameters;
   private _session: GausSession;
@@ -6,13 +8,12 @@ export class GausClient {
 
   register(
     productAuthParameters: GausProductAuthParameters,
-    deviceId: GausDeviceId
-  ): { pollInterval: GausPollIntervalSeconds; deviceAuthParameters: GausDeviceAuthParameters } {
+    deviceId: UserDeviceId
+  ): { pollInterval: number; deviceAuthParameters: GausDeviceAuthParameters } {
     if (productAuthParameters && productAuthParameters.accessKey && productAuthParameters.secretKey && deviceId) {
       return { pollInterval: 1, deviceAuthParameters: { accessKey: '', secretKey: '' } }; // Dummy code
     } else {
-      const error: GausError = { description: 'In parameters not defined' };
-      throw error;
+      throw new GausError('In parameters not defined');
     }
   }
 
@@ -21,8 +22,7 @@ export class GausClient {
       this._deviceAuthParameters = deviceAuthParameters;
       this._session = { deviceGUID: '', productGUID: '', token: '' }; // Dummy code
     } else {
-      const error: GausError = { description: 'In parameters not defined' };
-      throw error;
+      throw new GausError('In parameters not defined');
     }
   }
 
@@ -32,8 +32,7 @@ export class GausClient {
     } else if (this._deviceAuthParameters) {
       // auto authenticate
     } else {
-      const error: GausError = { description: 'No session or device auth params' };
-      throw error;
+      throw new GausError('No session or device auth params');
     }
   }
 
@@ -43,12 +42,10 @@ export class GausClient {
       } else if (this._deviceAuthParameters) {
         // auto authenticate here
       } else {
-        const error: GausError = { description: 'No session or device auth params' };
-        throw error;
+        throw new GausError('No session or device auth params');
       }
     } else {
-      const error: GausError = { description: 'In parameters not defined' };
-      throw error;
+      throw new GausError('In parameters not defined');
     }
   }
 }

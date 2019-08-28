@@ -1,3 +1,0 @@
-interface GausError {
-  description: string;
-}

@@ -1,6 +1,5 @@
-type GausDeviceId = string;
+type UserDeviceId = string;
 type GausDeviceGUID = string;
-type GausPollIntervalSeconds = number;
 type GausDeviceAccessKey = string;
 type GausDeviceSecretKey = string;
 
