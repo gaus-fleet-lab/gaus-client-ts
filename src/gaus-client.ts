@@ -1,70 +1,140 @@
 import { GausError } from './helpers/gaus-error';
+import requestPromise = require('request-promise');
 
 export class GausClient {
-  private _deviceAuthParameters: GausDeviceAuthParameters;
+  private _serverUrl: string;
   private _session: GausSession;
 
-  constructor() {}
+  private _REGISTER_ENDPOINT = '/register';
+  private _AUTHENTICATE_ENDPOINT = '/authenticate';
+
+  constructor(serverUrl: string) {
+    this._serverUrl = serverUrl;
+  }
 
   register(
     productAuthParameters: GausProductAuthParameters,
     deviceId: UserDeviceId
-  ): { pollInterval: number; deviceAuthParameters: GausDeviceAuthParameters } {
+  ): Promise<{ pollInterval: number; deviceAuthParameters: GausDeviceAuthParameters } | void> {
     if (productAuthParameters && productAuthParameters.accessKey && productAuthParameters.secretKey && deviceId) {
-      return { pollInterval: 1, deviceAuthParameters: { accessKey: '', secretKey: '' } }; // Dummy code
+      const reqOpt = {
+        uri: this._serverUrl + this._REGISTER_ENDPOINT,
+        method: 'POST',
+        body: { productAuthParameters, deviceId },
+        json: true,
+      };
+      return requestPromise(reqOpt)
+        .then(
+          (
+            registerResponse: { pollInterval: number; deviceAuthParameters: GausDeviceAuthParameters } | void
+          ): { pollInterval: number; deviceAuthParameters: GausDeviceAuthParameters } | void => registerResponse
+        )
+        .catch(
+          (error: Error): void => {
+            throw error;
+          }
+        );
     } else {
-      throw new GausError('In parameters not defined');
+      return Promise.reject('In parameter(s) not defined');
     }
   }
 
-  checkForUpdates(deviceAuthParameters: GausDeviceAuthParameters): GausUpdate[] {
-    if (!this._session) {
-      this._authenticate(deviceAuthParameters);
-    }
+  checkForUpdates(deviceAuthParameters: GausDeviceAuthParameters): Promise<GausUpdate[] | void> {
+    return Promise.resolve()
+      .then(
+        (): Promise<void | GausSession> => {
+          if (!this._session) {
+            return this._authenticate(deviceAuthParameters);
+          }
+          return Promise.resolve();
+        }
+      )
+      .then(
+        (): requestPromise.RequestPromise => {
+          const reqOpt = {
+            uri: this._serverUrl + this._checkForUpdateEndpoint(this._session.productGUID, this._session.deviceGUID),
+            headers: {
+              Authorization: `Bearer ${this._session.token}`,
+            },
+            json: true,
+          };
 
-    try {
-      // Make check-for-updates GET call
-      return [];
-    } catch (error) {
-      // if error is 401 Authentication denined, auto authenticate
-      this._authenticate(deviceAuthParameters);
-      // Make check-for-updates GET call
-      return [];
-
-      // else
-      throw error;
-    }
+          return requestPromise(reqOpt);
+        }
+      )
+      .then((updates: GausUpdate[]): GausUpdate[] => updates)
+      .catch(
+        (error: Error): void => {
+          throw error;
+        }
+      );
   }
 
-  report(deviceAuthParameters: GausDeviceAuthParameters, report: GausReport): void {
-    if (!this._session) {
-      this._authenticate(deviceAuthParameters);
-    }
+  report(deviceAuthParameters: GausDeviceAuthParameters, report: GausReport): Promise<void> {
+    return Promise.resolve()
+      .then(
+        (): Promise<void | GausSession> => {
+          if (!this._session) {
+            return this._authenticate(deviceAuthParameters);
+          }
+          return Promise.resolve();
+        }
+      )
+      .then(
+        (): requestPromise.RequestPromise => {
+          if (!report || !report.data || !report.header || !report.version) {
+            throw new GausError('In parameter(s) not defined');
+          }
 
-    if (!report || !report.data || !report.header || !report.version) {
-      throw new GausError('In parameters not defined');
-    }
-
-    try {
-      // Make report POST call
-    } catch (error) {
-      // if error is 401 Authentication denined, auto authenticate
-      this._authenticate(deviceAuthParameters);
-      // Make report POST call
-
-      // else
-      throw error;
-    }
+          const reqOpt = {
+            uri: this._serverUrl + this._reportEndpoint(this._session.productGUID, this._session.deviceGUID),
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${this._session.token}`,
+            },
+            body: report,
+            json: true,
+          };
+          return requestPromise(reqOpt);
+        }
+      )
+      .then((): void => {})
+      .catch(
+        (error: Error): void => {
+          throw error;
+        }
+      );
   }
 
-  private _authenticate(deviceAuthParameters: GausDeviceAuthParameters): GausSession {
+  private _authenticate(deviceAuthParameters: GausDeviceAuthParameters): Promise<GausSession | void> {
     if (deviceAuthParameters && deviceAuthParameters.accessKey && deviceAuthParameters.secretKey) {
-      // Make authenticate POST call
-      this._deviceAuthParameters = deviceAuthParameters;
-      this._session = { deviceGUID: '', productGUID: '', token: '' }; // Dummy code
-      return this._session;
+      const reqOpt = {
+        uri: this._serverUrl + this._AUTHENTICATE_ENDPOINT,
+        method: 'POST',
+        body: { deviceAuthParameters },
+        json: true,
+      };
+      return requestPromise(reqOpt)
+        .then(
+          (authenticateResponse: GausSession): GausSession => {
+            this._session = authenticateResponse;
+            return authenticateResponse;
+          }
+        )
+        .catch(
+          (error: Error): void => {
+            throw error;
+          }
+        );
     } else {
-      throw new GausError('Device authentication parameters not specified');
+      throw new GausError('In parameter(s) not defined');
     }
+  }
+
+  private _checkForUpdateEndpoint(productGUID: GausProductGUID, deviceGUID: GausDeviceGUID): string {
+    return '/device/' + productGUID + '/' + deviceGUID + '/check-for-updates';
+  }
+  private _reportEndpoint(productGUID: GausProductGUID, deviceGUID: GausDeviceGUID): string {
+    return '/device/' + productGUID + '/' + deviceGUID + '/report';
   }
 }
