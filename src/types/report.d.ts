@@ -14,8 +14,3 @@ interface GausReportHeader {
   ts: DateString;
   tags?: { [key: string]: string };
 }
-interface GausReport {
-  data: GausReportData[];
-  header: GausReportHeader;
-  version: GausReportVersion;
-}

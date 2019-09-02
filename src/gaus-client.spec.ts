@@ -1,7 +1,25 @@
+import * as requestPromise from 'request-promise';
 import { GausClient } from './gaus-client';
+jest.mock('request-promise');
 
 describe('GausClient', (): void => {
   const FAKE_SERVER = 'fakeServer';
+  const FAKE_DEVICE_AUTH_PARAMS = { accessKey: 'fakeAK', secretKey: 'fakeSK' };
+
+  beforeEach((): void => {
+    (requestPromise as any).mockClear();
+    (requestPromise as any).mockImplementation(
+      (req: any): any => {
+        if (req.uri.includes('authenticate')) {
+          return Promise.resolve({});
+        } else {
+          return {
+            promise: (): Promise<{}> => Promise.resolve({}),
+          };
+        }
+      }
+    );
+  });
 
   it('instantiates', (): void => {
     const client = new GausClient(FAKE_SERVER);
@@ -10,26 +28,35 @@ describe('GausClient', (): void => {
 
   it('register fails with falsy in parameters', (done): void => {
     new GausClient(FAKE_SERVER)
-      .register(null, '')
-      .then(() => {
-        done.fail(new Error('Should throw error'));
-      })
-      .catch(() => {
-        done();
-      });
+      .register({ productAuthParameters: null, deviceId: '' })
+      .then(
+        (): void => {
+          done.fail(new Error('Should throw error'));
+        }
+      )
+      .catch(
+        (): void => {
+          done();
+        }
+      );
   });
 
-  // it('register should return with correct in parameters ', (done): void => {
-  //   new GausClient(FAKE_SERVER)
-  //     .register({ accessKey: 'fakeAK', secretKey: 'fakeSK' }, 'fakeDID')
-  //     .then(registerResponse => {
-  //       expect(registerResponse).toBeTruthy();
-  //       done();
-  //     })
-  //     .catch(() => {
-  //       done.fail(new Error('Should not throw error'));
-  //     });
-  // });
+  it('register should return with correct in parameters ', (done): void => {
+    new GausClient(FAKE_SERVER)
+      .register({ productAuthParameters: FAKE_DEVICE_AUTH_PARAMS, deviceId: 'fakeDID' })
+      .then(
+        (registerResponse: RegisterResponse): void => {
+          expect(registerResponse).toBeTruthy();
+          expect(requestPromise).toHaveBeenCalledTimes(1); // register
+          done();
+        }
+      )
+      .catch(
+        (): void => {
+          done.fail('Should not throw error');
+        }
+      );
+  });
 
   it('checkForUpdates fails with no valid session', (done): void => {
     const client = new GausClient(FAKE_SERVER);
@@ -47,13 +74,33 @@ describe('GausClient', (): void => {
       );
   });
 
+  it('checkForUpdates should return with correct in parameters', (done): void => {
+    const client = new GausClient(FAKE_SERVER);
+    client
+      .checkForUpdates(FAKE_DEVICE_AUTH_PARAMS)
+      .then(
+        (fakeUpdates): void => {
+          expect(fakeUpdates).toBeTruthy();
+          expect(requestPromise).toHaveBeenCalledTimes(2); // authenticate + check-for-update
+          done();
+        }
+      )
+      .catch(
+        (): void => {
+          done.fail('Should not throw error');
+        }
+      );
+  });
+
   it('report fails with no valid session', (done): void => {
     const client = new GausClient(FAKE_SERVER);
     client
       .report(null, null)
-      .then(() => {
-        done.fail('Should throw error and not get here');
-      })
+      .then(
+        (): void => {
+          done.fail('Should throw error and not get here');
+        }
+      )
       .catch(
         (): void => {
           done();
@@ -61,63 +108,21 @@ describe('GausClient', (): void => {
       );
   });
 
-  // Test that runs regiester, authenticate, check-for-updates and report
-  // against the static dev stack with below product credentials
-  //
-  // fit('real data test', (done): void => {
-  //   const client = new GausClient('https://static.dev.gaus.sonymobile.com');
-  //   const productKeys = {
-  //     accessKey: 'ef867abf-b9b8-4b77-b71f-9e6bd542e7b0',
-  //     secretKey: 'f0b6f8f5bec68c31aae8b2e8957dad8fbdf04c13d8daa43889d8152ca435d2c8',
-  //   };
-  //   const deviceId = 'test device 1';
-  //   let deviceAuthParams: GausDeviceAuthParameters;
-
-  //   client
-  //     .register(productKeys, deviceId)
-  //     .then(
-  //       (
-  //         res: { pollInterval: number; deviceAuthParameters: GausDeviceAuthParameters } | void
-  //       ): Promise<GausUpdate[] | void> => {
-  //         deviceAuthParams = res ? res.deviceAuthParameters : null;
-  //         return client.checkForUpdates(deviceAuthParams);
-  //       }
-  //     )
-  //     .then(
-  //       (updates: GausUpdate[]): void => {
-  //         console.log(updates);
-  //         return;
-  //       }
-  //     )
-  //     .then(
-  //       (): Promise<void> => {
-  //         const timestring = new Date().toISOString();
-  //         const report: GausReport = {
-  //           data: [
-  //             {
-  //               v_ints: { aKey: 1 },
-  //               type: 'metric.generic.TestingTSClientEvent',
-  //               ts: timestring,
-  //             },
-  //           ],
-  //           header: {
-  //             ts: timestring,
-  //           },
-  //           version: '1.0',
-  //         };
-  //         return client.report(deviceAuthParams, report);
-  //       }
-  //     )
-  //     .then(
-  //       (): void => {
-  //         done();
-  //       }
-  //     )
-  //     .catch(
-  //       (error: Error): void => {
-  //         console.error(error);
-  //         done.fail();
-  //       }
-  //     );
-  // });
+  it('report should return with correct in parameters', (done): void => {
+    const client = new GausClient(FAKE_SERVER);
+    const fakeReport: ReportRequest = { data: [], header: { ts: 'fakeTime' }, version: 'fakeVersion' };
+    client
+      .report(FAKE_DEVICE_AUTH_PARAMS, fakeReport)
+      .then(
+        (): void => {
+          expect(requestPromise).toHaveBeenCalledTimes(2); // authenticate + report
+          done();
+        }
+      )
+      .catch(
+        (): void => {
+          done.fail('Should not throw error');
+        }
+      );
+  });
 });
