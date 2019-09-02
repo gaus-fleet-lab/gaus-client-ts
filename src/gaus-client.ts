@@ -28,6 +28,7 @@ export class GausClient {
       body: registerRequestParameters,
       json: true,
     };
+    console.log('IS MOCK: ', JSON.stringify((requestPromise as any)._isMockFunction));
     return requestPromise(reqOpt).promise();
   }
 
