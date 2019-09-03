@@ -1,5 +1,5 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  testPathIgnorePatterns: ['/node_modules/', '/src/e2e/'],
+  testPathIgnorePatterns: ['/dist/', '/node_modules/', '/src/e2e/'],
 };
