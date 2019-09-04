@@ -1,16 +1,43 @@
 import * as requestPromise from 'request-promise';
-import { GausClient } from './gaus-client';
+import { GausClient, ReportRequest } from './gaus-client';
 jest.mock('request-promise');
 
 describe('GausClient', (): void => {
   const FAKE_SERVER = 'fakeServer';
   const FAKE_DEVICE_AUTH_PARAMS = { accessKey: 'fakeAK', secretKey: 'fakeSK' };
+  const FAKE_DEVICE_ID = 'fakeDID';
+  const FAKE_REPORT: ReportRequest = { data: [], header: { ts: 'fakeTime' }, version: 'fakeVersion' };
+
+  const EXPECTED_REGISTER_REQUEST = {
+    body: { deviceId: FAKE_DEVICE_ID, productAuthParameters: FAKE_DEVICE_AUTH_PARAMS },
+    json: true,
+    method: 'POST',
+    uri: `${FAKE_SERVER}/register`,
+  };
+
+  const EXPECTED_CHECKFORUPDATE_REQUEST = {
+    headers: { Authorization: 'Bearer undefined' },
+    json: true,
+    uri: `${FAKE_SERVER}/device/undefined/undefined/check-for-updates`,
+  };
+
+  const EXPECTED_REPORT_REQUEST = {
+    body: FAKE_REPORT,
+    headers: { Authorization: 'Bearer undefined' },
+    json: true,
+    method: 'POST',
+    uri: `${FAKE_SERVER}/device/undefined/undefined/report`,
+  };
 
   beforeEach((): void => {
     (requestPromise as any).mockClear();
     (requestPromise as any).mockImplementation(
       (req: any): any => {
-        if (req.uri.includes('authenticate')) {
+        if (req.uri.includes('Not authenticated')) {
+          return {
+            promise: (): Promise<{}> => Promise.reject({ statusCode: 401 }),
+          };
+        } else if (req.uri.includes('authenticate')) {
           return Promise.resolve({});
         } else {
           return {
@@ -31,7 +58,7 @@ describe('GausClient', (): void => {
       .register({ productAuthParameters: null, deviceId: '' })
       .then(
         (): void => {
-          done.fail(new Error('Should throw error'));
+          done.fail(new Error('Should throw error with falsy in params'));
         }
       )
       .catch(
@@ -45,26 +72,28 @@ describe('GausClient', (): void => {
     new GausClient(FAKE_SERVER)
       .register({ productAuthParameters: FAKE_DEVICE_AUTH_PARAMS, deviceId: 'fakeDID' })
       .then(
-        (registerResponse: RegisterResponse): void => {
+        (registerResponse): void => {
           expect(registerResponse).toBeTruthy();
           expect(requestPromise).toHaveBeenCalledTimes(1); // register
+          expect(requestPromise).toHaveBeenCalledWith(EXPECTED_REGISTER_REQUEST);
+
           done();
         }
       )
       .catch(
-        (): void => {
-          done.fail('Should not throw error');
+        (error: Error): void => {
+          done.fail(error);
         }
       );
   });
 
-  it('checkForUpdates fails with no valid session', (done): void => {
+  it('checkForUpdates should fail with falsy in parameters', (done): void => {
     const client = new GausClient(FAKE_SERVER);
     client
       .checkForUpdates(null)
       .then(
         (): void => {
-          done.fail('Should throw error and not get here');
+          done.fail('Should throw error when falsy in parameters');
         }
       )
       .catch(
@@ -81,13 +110,14 @@ describe('GausClient', (): void => {
       .then(
         (fakeUpdates): void => {
           expect(fakeUpdates).toBeTruthy();
-          expect(requestPromise).toHaveBeenCalledTimes(2); // authenticate + check-for-update
+          expect(requestPromise).toHaveBeenCalledTimes(3); //check-for-update + authenticate + check-for-update
+          expect(requestPromise).toHaveBeenNthCalledWith(3, EXPECTED_CHECKFORUPDATE_REQUEST);
           done();
         }
       )
       .catch(
-        (): void => {
-          done.fail('Should not throw error');
+        (error): void => {
+          done.fail(error);
         }
       );
   });
@@ -98,7 +128,7 @@ describe('GausClient', (): void => {
       .report(null, null)
       .then(
         (): void => {
-          done.fail('Should throw error and not get here');
+          done.fail('Should throw error when falsy in parameters');
         }
       )
       .catch(
@@ -110,18 +140,19 @@ describe('GausClient', (): void => {
 
   it('report should return with correct in parameters', (done): void => {
     const client = new GausClient(FAKE_SERVER);
-    const fakeReport: ReportRequest = { data: [], header: { ts: 'fakeTime' }, version: 'fakeVersion' };
+
     client
-      .report(FAKE_DEVICE_AUTH_PARAMS, fakeReport)
+      .report(FAKE_DEVICE_AUTH_PARAMS, FAKE_REPORT)
       .then(
         (): void => {
-          expect(requestPromise).toHaveBeenCalledTimes(2); // authenticate + report
+          expect(requestPromise).toHaveBeenCalledTimes(3); // report + authenticate + report
+          expect(requestPromise).toHaveBeenNthCalledWith(3, EXPECTED_REPORT_REQUEST);
           done();
         }
       )
       .catch(
-        (): void => {
-          done.fail('Should not throw error');
+        (error): void => {
+          done.fail(error);
         }
       );
   });
