@@ -13,6 +13,11 @@ export interface GausDeviceAuthParameters {
   secretKey: GausDeviceAccessKey;
 }
 
+export interface GausDeviceConfiguration {
+  pollInterval: number;
+  deviceAuthParameters: GausDeviceAuthParameters;
+}
+
 //Product
 export type GausProductGUID = string;
 export type GausProductAccessKey = string;
@@ -40,6 +45,11 @@ export interface GausReportHeader {
   ts: DateString;
   tags?: { [key: string]: string };
 }
+export interface GausReport {
+  data: GausReportData[];
+  header: GausReportHeader;
+  version: GausReportVersion;
+}
 
 //Session
 export type GausToken = string;
@@ -61,68 +71,33 @@ export interface GausUpdate {
   metadata: GausMetadata;
   size: number;
   downloadUrl: string;
-  version: string; // use update type lib?
+  version: string; // FIXME GAUS-1210
   packageType: string;
   updateType: string;
   md5: string;
 }
 
-//Requests
-export interface RegisterRequest {
-  productAuthParameters: GausProductAuthParameters;
-  deviceId: UserDeviceId;
-}
-
-export interface AuthenticateRequest {
-  deviceAuthParameters: GausDeviceAuthParameters;
-}
-export interface ReportRequest {
-  data: GausReportData[];
-  header: GausReportHeader;
-  version: GausReportVersion;
-}
-
-//Responses
-export interface RegisterResponse {
-  pollInterval: number;
-  deviceAuthParameters: GausDeviceAuthParameters;
-}
-
-export interface AuthenticationResponse {
-  deviceGUID: string;
-  productGUID: string;
-  token: string;
-}
-
-export interface CheckForUpdateResponse {
-  updates: GausUpdate[];
-}
-
 export class GausClient {
   private _serverUrl: string;
-  private _session: GausSession = {
-    deviceGUID: 'Not authenticated',
-    productGUID: 'Not authenticated',
-    token: 'Not authenticated',
-  };
+  private _session: GausSession;
 
   private _REGISTER_ENDPOINT = '/register';
   private _AUTHENTICATE_ENDPOINT = '/authenticate';
 
   private _MAX_NUMBER_OF_AUTH_RETRIES = 3;
-  private _authAtempts = 0;
+  private _authAttempts = 0;
 
   constructor(serverUrl: string) {
     this._serverUrl = serverUrl;
   }
 
-  register(registerRequestParameters: RegisterRequest): Promise<RegisterResponse | void> {
+  register(productAuthParameters: GausProductAuthParameters, deviceId: UserDeviceId): Promise<GausDeviceConfiguration> {
+    const reqeustBody = { productAuthParameters, deviceId };
     if (
-      !registerRequestParameters ||
-      !registerRequestParameters.productAuthParameters ||
-      !registerRequestParameters.productAuthParameters.accessKey ||
-      !registerRequestParameters.productAuthParameters.secretKey ||
-      !registerRequestParameters.deviceId
+      !reqeustBody.productAuthParameters ||
+      !reqeustBody.productAuthParameters.accessKey ||
+      !reqeustBody.productAuthParameters.secretKey ||
+      !reqeustBody.deviceId
     ) {
       return Promise.reject('In parameter(s) not defined');
     }
@@ -130,45 +105,69 @@ export class GausClient {
     const reqOpt = {
       uri: `${this._serverUrl}${this._REGISTER_ENDPOINT}`,
       method: 'POST',
-      body: registerRequestParameters,
+      body: reqeustBody,
       json: true,
     };
     return requestPromise(reqOpt).promise();
   }
 
-  checkForUpdates(deviceAuthParameters: GausDeviceAuthParameters): Promise<CheckForUpdateResponse | void> {
-    return this._checkForUpdateTry().catch(
-      (error: any): Promise<CheckForUpdateResponse | void> => {
-        if (error.statusCode && (error.statusCode === 401 || error.statusCode === 403)) {
-          this._session = null;
-          return this._authenticate({ deviceAuthParameters }).then(
-            (): Promise<CheckForUpdateResponse> => this._checkForUpdateTry()
-          );
-        } else {
-          return Promise.reject(error);
+  checkForUpdates(deviceAuthParameters: GausDeviceAuthParameters): Promise<GausUpdate[]> {
+    return Promise.resolve()
+      .then(
+        (): Promise<GausSession> => {
+          if (!this._session) {
+            return this._authenticate(deviceAuthParameters);
+          }
+          return Promise.resolve(this._session);
         }
-      }
-    );
+      )
+      .then(
+        (): Promise<GausUpdate[]> =>
+          this._checkForUpdateTry().catch(
+            (error: any): Promise<GausUpdate[]> => {
+              if (error.statusCode && (error.statusCode === 401 || error.statusCode === 403)) {
+                this._session = null;
+                return this._authenticate(deviceAuthParameters).then(
+                  (): Promise<GausUpdate[]> => this._checkForUpdateTry()
+                );
+              } else {
+                return Promise.reject(error);
+              }
+            }
+          )
+      );
   }
 
-  report(deviceAuthParameters: GausDeviceAuthParameters, reportRequest: ReportRequest): Promise<void> {
-    if (!reportRequest || !reportRequest.data || !reportRequest.header || !reportRequest.version) {
+  report(deviceAuthParameters: GausDeviceAuthParameters, report: GausReport): Promise<void> {
+    if (!report || !report.data || !report.header || !report.version) {
       return Promise.reject('In parameter(s) not defined');
     }
 
-    return this._reportTry(reportRequest).catch(
-      (error: any): Promise<void> => {
-        if (error.statusCode && (error.statusCode === 401 || error.statusCode === 403)) {
-          this._session = null;
-          return this._authenticate({ deviceAuthParameters }).then((): Promise<void> => this._reportTry(reportRequest));
-        } else {
-          return Promise.reject(error);
+    return Promise.resolve()
+      .then(
+        (): Promise<GausSession> => {
+          if (!this._session) {
+            return this._authenticate(deviceAuthParameters);
+          }
+          return Promise.resolve(this._session);
         }
-      }
-    );
+      )
+      .then(
+        (): Promise<void> =>
+          this._reportTry(report).catch(
+            (error: any): Promise<void> => {
+              if (error.statusCode && (error.statusCode === 401 || error.statusCode === 403)) {
+                this._session = null;
+                return this._authenticate(deviceAuthParameters).then((): Promise<void> => this._reportTry(report));
+              } else {
+                return Promise.reject(error);
+              }
+            }
+          )
+      );
   }
 
-  private _checkForUpdateTry(): Promise<CheckForUpdateResponse> {
+  private _checkForUpdateTry(): Promise<GausUpdate[]> {
     const reqOpt = {
       uri: `${this._serverUrl}${this._checkForUpdateEndpoint(this._session.productGUID, this._session.deviceGUID)}`,
       headers: {
@@ -179,26 +178,28 @@ export class GausClient {
     return requestPromise(reqOpt).promise();
   }
 
-  private _reportTry(reportRequest: ReportRequest): Promise<void> {
+  private _reportTry(report: GausReport): Promise<void> {
     const reqOpt = {
       uri: `${this._serverUrl}${this._reportEndpoint(this._session.productGUID, this._session.deviceGUID)}`,
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this._session.token}`,
       },
-      body: reportRequest,
+      body: report,
       json: true,
     };
     return requestPromise(reqOpt).promise();
   }
 
-  private _authenticate(authenticationRequest: AuthenticateRequest): Promise<GausSession | void> {
-    this._authAtempts++;
+  private _authenticate(deviceAuthParameters: GausDeviceAuthParameters): Promise<GausSession> {
+    this._authAttempts++;
+
+    const requestBody = { deviceAuthParameters };
     if (
-      !authenticationRequest ||
-      !authenticationRequest.deviceAuthParameters ||
-      !authenticationRequest.deviceAuthParameters.accessKey ||
-      !authenticationRequest.deviceAuthParameters.secretKey
+      !requestBody ||
+      !requestBody.deviceAuthParameters ||
+      !requestBody.deviceAuthParameters.accessKey ||
+      !requestBody.deviceAuthParameters.secretKey
     ) {
       return Promise.reject('In parameter(s) not defined');
     }
@@ -206,14 +207,14 @@ export class GausClient {
     const reqOpt = {
       uri: `${this._serverUrl}${this._AUTHENTICATE_ENDPOINT}`,
       method: 'POST',
-      body: authenticationRequest,
+      body: requestBody,
       json: true,
     };
-    if (this._authAtempts < this._MAX_NUMBER_OF_AUTH_RETRIES) {
+    if (this._authAttempts < this._MAX_NUMBER_OF_AUTH_RETRIES) {
       return requestPromise(reqOpt).then(
-        (authenticateResponse: AuthenticationResponse): GausSession => {
-          this._authAtempts = 0; // reseting atempts as auth succeeded
-          this._session = authenticateResponse;
+        (session: GausSession): GausSession => {
+          this._authAttempts = 0; // reseting attempts as auth succeeded
+          this._session = session;
           return this._session;
         }
       );

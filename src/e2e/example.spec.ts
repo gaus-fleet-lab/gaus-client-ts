@@ -1,10 +1,4 @@
-import {
-  GausClient,
-  GausDeviceAuthParameters,
-  RegisterResponse,
-  CheckForUpdateResponse,
-  ReportRequest,
-} from '../gaus-client';
+import { GausClient, GausDeviceAuthParameters, GausDeviceConfiguration, GausUpdate } from '../gaus-client';
 
 //   Test that runs regiester, authenticate, check-for-updates and report
 //   against the static dev stack with below product credentials
@@ -17,27 +11,26 @@ describe('real data test', (): void => {
     };
     const deviceId = 'test device 1';
     let deviceAuthParams: GausDeviceAuthParameters;
-    const registerRequestParameters = { productAuthParameters, deviceId };
 
     client
-      .register(registerRequestParameters)
+      .register(productAuthParameters, deviceId)
       .then(
-        (res: RegisterResponse | void): Promise<CheckForUpdateResponse | void> => {
+        (res: GausDeviceConfiguration): Promise<GausUpdate[]> => {
           deviceAuthParams = res && res.deviceAuthParameters;
           return client.checkForUpdates(deviceAuthParams);
         }
       )
       .then(
-        (res: CheckForUpdateResponse): void => {
+        (res: GausUpdate[]): void => {
           console.log('Updates found:');
-          console.log(JSON.stringify(res.updates));
+          console.log(JSON.stringify(res));
           return;
         }
       )
       .then(
         (): Promise<void> => {
           const timestring = new Date().toISOString();
-          const report: ReportRequest = {
+          const report = {
             data: [
               {
                 v_ints: { aKey: 1 }, // eslint-disable-line @typescript-eslint/camelcase
@@ -53,10 +46,14 @@ describe('real data test', (): void => {
           return client.report(deviceAuthParams, report);
         }
       )
-      .then(done)
+      .then(
+        (): void => {
+          done();
+        }
+      )
       .catch(
-        (error: Error): void => {
-          done.fail(error);
+        (err): void => {
+          done.fail(err);
         }
       );
   });

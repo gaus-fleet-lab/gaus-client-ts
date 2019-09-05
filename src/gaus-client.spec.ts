@@ -1,12 +1,12 @@
 import * as requestPromise from 'request-promise';
-import { GausClient, ReportRequest } from './gaus-client';
+import { GausClient, GausReport } from './gaus-client';
 jest.mock('request-promise');
 
 describe('GausClient', (): void => {
   const FAKE_SERVER = 'fakeServer';
   const FAKE_DEVICE_AUTH_PARAMS = { accessKey: 'fakeAK', secretKey: 'fakeSK' };
   const FAKE_DEVICE_ID = 'fakeDID';
-  const FAKE_REPORT: ReportRequest = { data: [], header: { ts: 'fakeTime' }, version: 'fakeVersion' };
+  const FAKE_REPORT: GausReport = { data: [], header: { ts: 'fakeTime' }, version: 'fakeVersion' };
 
   const EXPECTED_REGISTER_REQUEST = {
     body: { deviceId: FAKE_DEVICE_ID, productAuthParameters: FAKE_DEVICE_AUTH_PARAMS },
@@ -30,7 +30,7 @@ describe('GausClient', (): void => {
   };
 
   beforeEach((): void => {
-    (requestPromise as any).mockClear();
+    jest.clearAllMocks();
     (requestPromise as any).mockImplementation(
       (req: any): any => {
         if (req.uri.includes('Not authenticated')) {
@@ -55,7 +55,7 @@ describe('GausClient', (): void => {
 
   it('register fails with falsy in parameters', (done): void => {
     new GausClient(FAKE_SERVER)
-      .register({ productAuthParameters: null, deviceId: '' })
+      .register(null, '')
       .then(
         (): void => {
           done.fail(new Error('Should throw error with falsy in params'));
@@ -70,7 +70,7 @@ describe('GausClient', (): void => {
 
   it('register should return with correct in parameters ', (done): void => {
     new GausClient(FAKE_SERVER)
-      .register({ productAuthParameters: FAKE_DEVICE_AUTH_PARAMS, deviceId: 'fakeDID' })
+      .register(FAKE_DEVICE_AUTH_PARAMS, 'fakeDID')
       .then(
         (registerResponse): void => {
           expect(registerResponse).toBeTruthy();
@@ -110,8 +110,8 @@ describe('GausClient', (): void => {
       .then(
         (fakeUpdates): void => {
           expect(fakeUpdates).toBeTruthy();
-          expect(requestPromise).toHaveBeenCalledTimes(3); //check-for-update + authenticate + check-for-update
-          expect(requestPromise).toHaveBeenNthCalledWith(3, EXPECTED_CHECKFORUPDATE_REQUEST);
+          expect(requestPromise).toHaveBeenCalledTimes(2); // authenticate + check-for-update
+          expect(requestPromise).toHaveBeenNthCalledWith(2, EXPECTED_CHECKFORUPDATE_REQUEST);
           done();
         }
       )
@@ -145,8 +145,8 @@ describe('GausClient', (): void => {
       .report(FAKE_DEVICE_AUTH_PARAMS, FAKE_REPORT)
       .then(
         (): void => {
-          expect(requestPromise).toHaveBeenCalledTimes(3); // report + authenticate + report
-          expect(requestPromise).toHaveBeenNthCalledWith(3, EXPECTED_REPORT_REQUEST);
+          expect(requestPromise).toHaveBeenCalledTimes(2); // authenticate + report
+          expect(requestPromise).toHaveBeenNthCalledWith(2, EXPECTED_REPORT_REQUEST);
           done();
         }
       )
