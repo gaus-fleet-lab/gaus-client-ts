@@ -77,6 +77,14 @@ export interface GausUpdate {
   md5: string;
 }
 
+export type GausUpdateParameterName = string;
+export type GausUpdateParameterValue = string;
+
+export interface GausUpdateParameter {
+  name: GausUpdateParameterName;
+  value: GausUpdateParameterValue;
+}
+
 export class GausClient {
   private _serverUrl: string;
   private _session: GausSession;
@@ -111,7 +119,14 @@ export class GausClient {
       });
   }
 
-  checkForUpdates(deviceAuthParameters: GausDeviceAuthParameters): Promise<GausUpdate[]> {
+  checkForUpdates(
+    deviceAuthParameters: GausDeviceAuthParameters,
+    updateParameters: GausUpdateParameter[]
+  ): Promise<GausUpdate[]> {
+    if (!updateParameters) {
+      return Promise.reject('In parameter(s) not defined');
+    }
+
     return Promise.resolve()
       .then(
         (): Promise<GausSession> => {
@@ -123,12 +138,12 @@ export class GausClient {
       )
       .then(
         (): Promise<GausUpdate[]> =>
-          this._checkForUpdateTry().catch(
+          this._checkForUpdateTry(updateParameters).catch(
             (error: any): Promise<GausUpdate[]> => {
               if (error.statusCode && (error.statusCode === 401 || error.statusCode === 403)) {
                 this._session = null;
                 return this._authenticate(deviceAuthParameters).then(
-                  (): Promise<GausUpdate[]> => this._checkForUpdateTry()
+                  (): Promise<GausUpdate[]> => this._checkForUpdateTry(updateParameters)
                 );
               } else {
                 return Promise.reject(error);
@@ -167,12 +182,15 @@ export class GausClient {
       );
   }
 
-  private _checkForUpdateTry(): Promise<GausUpdate[]> {
+  private _checkForUpdateTry(updateParameters: GausUpdateParameter[]): Promise<GausUpdate[]> {
+    let queryParamString: string = updateParameters.map(p => `${p.name}=${p.value}`).join('&');
+
     return superagent
       .get(`${this._serverUrl}${this._checkForUpdateEndpoint(this._session.productGUID, this._session.deviceGUID)}`)
+      .query({ query: queryParamString })
       .set('Authorization', `Bearer ${this._session.token}`)
       .then(result => {
-        return result.body;
+        return result.body.updates;
       });
   }
 

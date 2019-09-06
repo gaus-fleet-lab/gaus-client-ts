@@ -1,7 +1,8 @@
 // import * as requestPromise from 'request-promise';
 import * as superagent from 'superagent';
+const superagentMock = require('superagent-mocker')(superagent);
 import { GausClient, GausReport } from './gaus-client';
-jest.mock('superagent');
+// jest.mock('superagent');
 // jest.mock('request-promise');
 
 describe('GausClient', (): void => {
@@ -32,7 +33,17 @@ describe('GausClient', (): void => {
   };
 
   beforeEach((): void => {
-    jest.clearAllMocks();
+    superagentMock.post(`${FAKE_SERVER}/register`, (req: any) => {
+      return { body: req.body };
+    });
+    superagent
+      .post(`${FAKE_SERVER}/register`, () => {})
+      .send({})
+      .end((err: any, data: any) => {
+        console.log(data);
+      });
+
+    // jest.clearAllMocks();
     // (requestPromise as any).mockImplementation(
     //   (req: any): any => {
     //     if (req.uri.includes('Not authenticated')) {
@@ -48,9 +59,6 @@ describe('GausClient', (): void => {
     //     }
     //   }
     // );
-    (superagent as any).mockImplementation({
-      post: () => {},
-    });
   });
 
   it('instantiates', (): void => {
