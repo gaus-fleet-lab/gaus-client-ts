@@ -1,4 +1,4 @@
-import * as requestPromise from 'request-promise';
+import * as superagent from 'superagent';
 
 //Exported types:
 
@@ -92,23 +92,23 @@ export class GausClient {
   }
 
   register(productAuthParameters: GausProductAuthParameters, deviceId: UserDeviceId): Promise<GausDeviceConfiguration> {
-    const reqeustBody = { productAuthParameters, deviceId };
+    const requstBody = { productAuthParameters, deviceId };
     if (
-      !reqeustBody.productAuthParameters ||
-      !reqeustBody.productAuthParameters.accessKey ||
-      !reqeustBody.productAuthParameters.secretKey ||
-      !reqeustBody.deviceId
+      !requstBody.productAuthParameters ||
+      !requstBody.productAuthParameters.accessKey ||
+      !requstBody.productAuthParameters.secretKey ||
+      !requstBody.deviceId
     ) {
       return Promise.reject('In parameter(s) not defined');
     }
 
-    const reqOpt = {
-      uri: `${this._serverUrl}${this._REGISTER_ENDPOINT}`,
-      method: 'POST',
-      body: reqeustBody,
-      json: true,
-    };
-    return requestPromise(reqOpt).promise();
+    return superagent
+      .post(`${this._serverUrl}${this._REGISTER_ENDPOINT}`)
+      .send(requstBody)
+      .set('accept', 'json')
+      .then(result => {
+        return result.body;
+      });
   }
 
   checkForUpdates(deviceAuthParameters: GausDeviceAuthParameters): Promise<GausUpdate[]> {
@@ -168,27 +168,21 @@ export class GausClient {
   }
 
   private _checkForUpdateTry(): Promise<GausUpdate[]> {
-    const reqOpt = {
-      uri: `${this._serverUrl}${this._checkForUpdateEndpoint(this._session.productGUID, this._session.deviceGUID)}`,
-      headers: {
-        Authorization: `Bearer ${this._session.token}`,
-      },
-      json: true,
-    };
-    return requestPromise(reqOpt).promise();
+    return superagent
+      .get(`${this._serverUrl}${this._checkForUpdateEndpoint(this._session.productGUID, this._session.deviceGUID)}`)
+      .set('Authorization', `Bearer ${this._session.token}`)
+      .then(result => {
+        return result.body;
+      });
   }
 
   private _reportTry(report: GausReport): Promise<void> {
-    const reqOpt = {
-      uri: `${this._serverUrl}${this._reportEndpoint(this._session.productGUID, this._session.deviceGUID)}`,
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this._session.token}`,
-      },
-      body: report,
-      json: true,
-    };
-    return requestPromise(reqOpt).promise();
+    return superagent
+      .post(`${this._serverUrl}${this._reportEndpoint(this._session.productGUID, this._session.deviceGUID)}`)
+      .send(report)
+      .set('Authorization', `Bearer ${this._session.token}`)
+      .set('accept', 'json')
+      .then();
   }
 
   private _authenticate(deviceAuthParameters: GausDeviceAuthParameters): Promise<GausSession> {
@@ -204,20 +198,16 @@ export class GausClient {
       return Promise.reject('In parameter(s) not defined');
     }
 
-    const reqOpt = {
-      uri: `${this._serverUrl}${this._AUTHENTICATE_ENDPOINT}`,
-      method: 'POST',
-      body: requestBody,
-      json: true,
-    };
     if (this._authAttempts < this._MAX_NUMBER_OF_AUTH_RETRIES) {
-      return requestPromise(reqOpt).then(
-        (session: GausSession): GausSession => {
+      return superagent
+        .post(`${this._serverUrl}${this._AUTHENTICATE_ENDPOINT}`)
+        .send(requestBody)
+        .set('accept', 'json')
+        .then(result => {
           this._authAttempts = 0; // reseting attempts as auth succeeded
-          this._session = session;
+          this._session = result.body;
           return this._session;
-        }
-      );
+        });
     } else {
       return Promise.reject('Authentication failed: Exeeded max number of auth retries');
     }

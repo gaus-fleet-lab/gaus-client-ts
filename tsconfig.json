@@ -10,7 +10,7 @@
     "experimentalDecorators": true,
     "target": "es5",
     "typeRoots": ["node_modules/@types", "src/"],
-    "types": ["jest", "node"],
+    "types": ["jest"],
     "lib": ["es2017", "dom"],
     "noImplicitAny": true
   },

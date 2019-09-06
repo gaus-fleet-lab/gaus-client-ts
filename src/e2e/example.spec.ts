@@ -6,8 +6,8 @@ describe('real data test', (): void => {
   it('that do register, authenticate, check-for-update and report flow', (done): void => {
     const client = new GausClient('https://static.dev.gaus.sonymobile.com');
     const productAuthParameters = {
-      accessKey: '[FILL IN WITH PRODUCT ACCESS KEY]',
-      secretKey: '[FILL IN WITH PRODUCT SECRET]',
+      accessKey: '5118b598-e6c4-44ad-bf62-c0a816f13ee0',
+      secretKey: 'f16bb8e586cc57b241abdabedcd393a89e7afbf4f24e3500bfa1b84f27bbb0b9',
     };
     const deviceId = 'test device 1';
     let deviceAuthParams: GausDeviceAuthParameters;
