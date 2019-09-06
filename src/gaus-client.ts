@@ -185,7 +185,7 @@ export class GausClient {
       .then();
   }
 
-  private _authenticate(deviceAuthParameters: GausDeviceAuthParameters): Promise<GausSession> {
+  protected _authenticate(deviceAuthParameters: GausDeviceAuthParameters): Promise<GausSession> {
     this._authAttempts++;
 
     const requestBody = { deviceAuthParameters };

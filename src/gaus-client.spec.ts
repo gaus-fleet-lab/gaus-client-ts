@@ -1,5 +1,7 @@
 // import * as requestPromise from 'request-promise';
+import * as superagent from 'superagent';
 import { GausClient, GausReport } from './gaus-client';
+jest.mock('superagent');
 // jest.mock('request-promise');
 
 describe('GausClient', (): void => {
@@ -46,6 +48,9 @@ describe('GausClient', (): void => {
     //     }
     //   }
     // );
+    (superagent as any).mockImplementation({
+      post: () => {},
+    });
   });
 
   it('instantiates', (): void => {
@@ -53,7 +58,7 @@ describe('GausClient', (): void => {
     expect(client).toBeTruthy();
   });
 
-  fit('register fails with falsy in parameters', (done): void => {
+  it('register fails with falsy in parameters', (done): void => {
     new GausClient(FAKE_SERVER)
       .register(null, '')
       .then(
