@@ -1,64 +1,60 @@
-// import * as requestPromise from 'request-promise';
 import * as superagent from 'superagent';
-const superagentMock = require('superagent-mocker')(superagent);
 import { GausClient, GausReport } from './gaus-client';
-// jest.mock('superagent');
-// jest.mock('request-promise');
+const superagentMock = require('superagent-mocker')(superagent);
 
 describe('GausClient', (): void => {
   const FAKE_SERVER = 'fakeServer';
-  const FAKE_DEVICE_AUTH_PARAMS = { accessKey: 'fakeAK', secretKey: 'fakeSK' };
+  const FAKE_PRODUCT_AUTH_PARAMS = { accessKey: 'fakePAK', secretKey: 'fakePSK' };
+  const FAKE_DEVICE_AUTH_PARAMS = { accessKey: 'fakeDAK', secretKey: 'fakeDSK' };
+  const FAKE_POLL_INTERVAL = 10000;
   const FAKE_DEVICE_ID = 'fakeDID';
+  const FAKE_UPDATE_TYPES = [{ name: 'fakeParamName', value: 'fakeParamValue' }];
+  const FAKE_DEVICE_GUID = 'fakeDGUID';
+  const FAKE_PRODUCT_GUID = 'fakePGUID';
+  const FAKE_TOKEN = 'fakeToken';
   const FAKE_REPORT: GausReport = { data: [], header: { ts: 'fakeTime' }, version: 'fakeVersion' };
 
-  const EXPECTED_REGISTER_REQUEST = {
-    body: { deviceId: FAKE_DEVICE_ID, productAuthParameters: FAKE_DEVICE_AUTH_PARAMS },
-    json: true,
-    method: 'POST',
-    uri: `${FAKE_SERVER}/register`,
-  };
-
-  const EXPECTED_CHECKFORUPDATE_REQUEST = {
-    headers: { Authorization: 'Bearer undefined' },
-    json: true,
-    uri: `${FAKE_SERVER}/device/undefined/undefined/check-for-updates`,
-  };
-
-  const EXPECTED_REPORT_REQUEST = {
-    body: FAKE_REPORT,
-    headers: { Authorization: 'Bearer undefined' },
-    json: true,
-    method: 'POST',
-    uri: `${FAKE_SERVER}/device/undefined/undefined/report`,
-  };
+  const postSpy = jest.spyOn(superagent, 'post');
+  const getSpy = jest.spyOn(superagent, 'get');
 
   beforeEach((): void => {
-    superagentMock.post(`${FAKE_SERVER}/register`, (req: any) => {
-      return { body: req.body };
-    });
-    superagent
-      .post(`${FAKE_SERVER}/register`, () => {})
-      .send({})
-      .end((err: any, data: any) => {
-        console.log(data);
-      });
+    superagentMock.clearRoutes();
 
-    // jest.clearAllMocks();
-    // (requestPromise as any).mockImplementation(
-    //   (req: any): any => {
-    //     if (req.uri.includes('Not authenticated')) {
-    //       return {
-    //         promise: (): Promise<{}> => Promise.reject({ statusCode: 401 }),
-    //       };
-    //     } else if (req.uri.includes('authenticate')) {
-    //       return Promise.resolve({});
-    //     } else {
-    //       return {
-    //         promise: (): Promise<{}> => Promise.resolve({}),
-    //       };
-    //     }
-    //   }
-    // );
+    // Post request mocks
+    superagentMock.post(
+      `${FAKE_SERVER}/register`,
+      (): any => ({ body: { pollInterval: FAKE_POLL_INTERVAL, deviceAuthParameters: FAKE_DEVICE_AUTH_PARAMS } })
+    );
+    superagentMock.post(
+      `${FAKE_SERVER}/authenticate`,
+      (): any => ({
+        body: {
+          deviceGUID: FAKE_DEVICE_GUID,
+          productGUID: FAKE_PRODUCT_GUID,
+          token: FAKE_TOKEN,
+        },
+      })
+    );
+    superagentMock.post(`${FAKE_SERVER}/device/${FAKE_PRODUCT_GUID}/${FAKE_DEVICE_GUID}/report`, (): void => {});
+
+    // Get request mock
+    superagentMock.get(
+      `${FAKE_SERVER}/device/${FAKE_PRODUCT_GUID}/${FAKE_DEVICE_GUID}/check-for-updates`,
+      (): any => ({ body: { updates: {} } })
+    );
+
+    superagent
+      .get('')
+      .query({})
+      .set({})
+      .end((): void => {});
+    superagent
+      .post('')
+      .send()
+      .end((): void => {});
+
+    postSpy.mockClear();
+    getSpy.mockClear();
   });
 
   it('instantiates', (): void => {
@@ -81,15 +77,14 @@ describe('GausClient', (): void => {
       );
   });
 
-  fit('register should return with correct in parameters ', (done): void => {
+  it('register should return with correct in parameters ', (done): void => {
     new GausClient(FAKE_SERVER)
-      .register(FAKE_DEVICE_AUTH_PARAMS, 'fakeDID')
+      .register(FAKE_PRODUCT_AUTH_PARAMS, FAKE_DEVICE_ID)
       .then(
         (registerResponse): void => {
           expect(registerResponse).toBeTruthy();
-          // expect(requestPromise).toHaveBeenCalledTimes(1); // register
-          // expect(requestPromise).toHaveBeenCalledWith(EXPECTED_REGISTER_REQUEST);
-
+          expect(postSpy).toHaveBeenCalledTimes(1);
+          expect(postSpy).toHaveBeenCalledWith(`${FAKE_SERVER}/register`);
           done();
         }
       )
@@ -100,73 +95,77 @@ describe('GausClient', (): void => {
       );
   });
 
-  // it('checkForUpdates should fail with falsy in parameters', (done): void => {
-  //   const client = new GausClient(FAKE_SERVER);
-  //   client
-  //     .checkForUpdates(null)
-  //     .then(
-  //       (): void => {
-  //         done.fail('Should throw error when falsy in parameters');
-  //       }
-  //     )
-  //     .catch(
-  //       (): void => {
-  //         done();
-  //       }
-  //     );
-  // });
+  it('checkForUpdates should fail with falsy in parameters', (done): void => {
+    new GausClient(FAKE_SERVER)
+      .checkForUpdates(null, null)
+      .then(
+        (): void => {
+          done.fail('Should throw error when falsy in parameters');
+        }
+      )
+      .catch(
+        (): void => {
+          done();
+        }
+      );
+  });
 
-  // it('checkForUpdates should return with correct in parameters', (done): void => {
-  //   const client = new GausClient(FAKE_SERVER);
-  //   client
-  //     .checkForUpdates(FAKE_DEVICE_AUTH_PARAMS)
-  //     .then(
-  //       (fakeUpdates): void => {
-  //         expect(fakeUpdates).toBeTruthy();
-  //         expect(requestPromise).toHaveBeenCalledTimes(2); // authenticate + check-for-update
-  //         expect(requestPromise).toHaveBeenNthCalledWith(2, EXPECTED_CHECKFORUPDATE_REQUEST);
-  //         done();
-  //       }
-  //     )
-  //     .catch(
-  //       (error): void => {
-  //         done.fail(error);
-  //       }
-  //     );
-  // });
+  it('checkForUpdates should return with correct in parameters', (done): void => {
+    new GausClient(FAKE_SERVER)
+      .checkForUpdates(FAKE_DEVICE_AUTH_PARAMS, FAKE_UPDATE_TYPES)
+      .then(
+        (fakeUpdates): void => {
+          expect(fakeUpdates).toBeTruthy();
+          expect(postSpy).toHaveBeenCalledTimes(1);
+          expect(postSpy).toHaveBeenCalledWith(`${FAKE_SERVER}/authenticate`);
+          expect(getSpy).toHaveBeenCalledTimes(1);
+          expect(getSpy).toHaveBeenCalledWith(
+            `${FAKE_SERVER}/device/${FAKE_PRODUCT_GUID}/${FAKE_DEVICE_GUID}/check-for-updates`
+          );
 
-  // it('report fails with no valid session', (done): void => {
-  //   const client = new GausClient(FAKE_SERVER);
-  //   client
-  //     .report(null, null)
-  //     .then(
-  //       (): void => {
-  //         done.fail('Should throw error when falsy in parameters');
-  //       }
-  //     )
-  //     .catch(
-  //       (): void => {
-  //         done();
-  //       }
-  //     );
-  // });
+          done();
+        }
+      )
+      .catch(
+        (error): void => {
+          done.fail(error);
+        }
+      );
+  });
 
-  // it('report should return with correct in parameters', (done): void => {
-  //   const client = new GausClient(FAKE_SERVER);
+  it('report fails with no valid session', (done): void => {
+    new GausClient(FAKE_SERVER)
+      .report(null, null)
+      .then(
+        (): void => {
+          done.fail('Should throw error when falsy in parameters');
+        }
+      )
+      .catch(
+        (): void => {
+          done();
+        }
+      );
+  });
 
-  //   client
-  //     .report(FAKE_DEVICE_AUTH_PARAMS, FAKE_REPORT)
-  //     .then(
-  //       (): void => {
-  //         expect(requestPromise).toHaveBeenCalledTimes(2); // authenticate + report
-  //         expect(requestPromise).toHaveBeenNthCalledWith(2, EXPECTED_REPORT_REQUEST);
-  //         done();
-  //       }
-  //     )
-  //     .catch(
-  //       (error): void => {
-  //         done.fail(error);
-  //       }
-  //     );
-  // });
+  it('report should return with correct in parameters', (done): void => {
+    new GausClient(FAKE_SERVER)
+      .report(FAKE_DEVICE_AUTH_PARAMS, FAKE_REPORT)
+      .then(
+        (): void => {
+          expect(postSpy).toHaveBeenCalledTimes(2);
+          expect(postSpy).toHaveBeenNthCalledWith(1, `${FAKE_SERVER}/authenticate`);
+          expect(postSpy).toHaveBeenNthCalledWith(
+            2,
+            `${FAKE_SERVER}/device/${FAKE_PRODUCT_GUID}/${FAKE_DEVICE_GUID}/report`
+          );
+          done();
+        }
+      )
+      .catch(
+        (error): void => {
+          done.fail(error);
+        }
+      );
+  });
 });

@@ -114,9 +114,7 @@ export class GausClient {
       .post(`${this._serverUrl}${this._REGISTER_ENDPOINT}`)
       .send(requstBody)
       .set('accept', 'json')
-      .then(result => {
-        return result.body;
-      });
+      .then((result): GausDeviceConfiguration => result.body);
   }
 
   checkForUpdates(
@@ -182,27 +180,6 @@ export class GausClient {
       );
   }
 
-  private _checkForUpdateTry(updateParameters: GausUpdateParameter[]): Promise<GausUpdate[]> {
-    let queryParamString: string = updateParameters.map(p => `${p.name}=${p.value}`).join('&');
-
-    return superagent
-      .get(`${this._serverUrl}${this._checkForUpdateEndpoint(this._session.productGUID, this._session.deviceGUID)}`)
-      .query({ query: queryParamString })
-      .set('Authorization', `Bearer ${this._session.token}`)
-      .then(result => {
-        return result.body.updates;
-      });
-  }
-
-  private _reportTry(report: GausReport): Promise<void> {
-    return superagent
-      .post(`${this._serverUrl}${this._reportEndpoint(this._session.productGUID, this._session.deviceGUID)}`)
-      .send(report)
-      .set('Authorization', `Bearer ${this._session.token}`)
-      .set('accept', 'json')
-      .then();
-  }
-
   protected _authenticate(deviceAuthParameters: GausDeviceAuthParameters): Promise<GausSession> {
     this._authAttempts++;
 
@@ -221,14 +198,40 @@ export class GausClient {
         .post(`${this._serverUrl}${this._AUTHENTICATE_ENDPOINT}`)
         .send(requestBody)
         .set('accept', 'json')
-        .then(result => {
-          this._authAttempts = 0; // reseting attempts as auth succeeded
-          this._session = result.body;
-          return this._session;
-        });
+        .then(
+          (result): GausSession => {
+            this._authAttempts = 0; // reseting attempts as auth succeeded
+            this._session = result.body;
+            return this._session;
+          }
+        );
     } else {
       return Promise.reject('Authentication failed: Exeeded max number of auth retries');
     }
+  }
+
+  private _checkForUpdateTry(updateParameters: GausUpdateParameter[]): Promise<GausUpdate[]> {
+    const queryObject = updateParameters.reduce((acc: { [key: string]: string }, cur: GausUpdateParameter): {
+      [key: string]: string;
+    } => {
+      acc[cur.name] = cur.value;
+      return acc;
+    }, {});
+
+    return superagent
+      .get(`${this._serverUrl}${this._checkForUpdateEndpoint(this._session.productGUID, this._session.deviceGUID)}`)
+      .query(queryObject)
+      .set('Authorization', `Bearer ${this._session.token}`)
+      .then((result): GausUpdate[] => result.body.updates);
+  }
+
+  private _reportTry(report: GausReport): Promise<void> {
+    return superagent
+      .post(`${this._serverUrl}${this._reportEndpoint(this._session.productGUID, this._session.deviceGUID)}`)
+      .send(report)
+      .set('Authorization', `Bearer ${this._session.token}`)
+      .set('accept', 'json')
+      .then();
   }
 
   private _checkForUpdateEndpoint(productGUID: GausProductGUID, deviceGUID: GausDeviceGUID): string {

@@ -6,8 +6,8 @@ describe('real data test', (): void => {
   it('that do register, authenticate, check-for-update and report flow', (done): void => {
     const client = new GausClient('https://static.dev.gaus.sonymobile.com');
     const productAuthParameters = {
-      accessKey: '5118b598-e6c4-44ad-bf62-c0a816f13ee0',
-      secretKey: 'f16bb8e586cc57b241abdabedcd393a89e7afbf4f24e3500bfa1b84f27bbb0b9',
+      accessKey: '[FILL IN WITH PRODUCT ACCESS KEY]',
+      secretKey: '[FILL IN WITH PRODUCT SECRET]',
     };
     const deviceId = 'test device 1';
     let deviceAuthParams: GausDeviceAuthParameters;
@@ -17,13 +17,13 @@ describe('real data test', (): void => {
       .then(
         (res: GausDeviceConfiguration): Promise<GausUpdate[]> => {
           deviceAuthParams = res && res.deviceAuthParameters;
-          return client.checkForUpdates(deviceAuthParams);
+          const updateTypeFilter = [{ name: 'firmware-version', value: '0.0.0' }];
+          return client.checkForUpdates(deviceAuthParams, updateTypeFilter);
         }
       )
       .then(
         (res: GausUpdate[]): void => {
-          console.log('Updates found:');
-          console.log(JSON.stringify(res));
+          console.log('Updates found:', JSON.stringify(res));
           return;
         }
       )
