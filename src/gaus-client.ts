@@ -119,12 +119,8 @@ export class GausClient {
 
   checkForUpdates(
     deviceAuthParameters: GausDeviceAuthParameters,
-    updateParameters: GausUpdateParameter[]
+    updateParameters: GausUpdateParameter[] = []
   ): Promise<GausUpdate[]> {
-    if (!updateParameters) {
-      return Promise.reject('In parameter(s) not defined');
-    }
-
     return Promise.resolve()
       .then(
         (): Promise<GausSession> => {
