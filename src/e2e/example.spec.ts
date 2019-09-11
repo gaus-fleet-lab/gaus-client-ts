@@ -17,13 +17,13 @@ describe('real data test', (): void => {
       .then(
         (res: GausDeviceConfiguration): Promise<GausUpdate[]> => {
           deviceAuthParams = res && res.deviceAuthParameters;
-          return client.checkForUpdates(deviceAuthParams);
+          const updateTypeFilter = [{ name: 'firmware-version', value: '0.0.0' }];
+          return client.checkForUpdates(deviceAuthParams, updateTypeFilter);
         }
       )
       .then(
         (res: GausUpdate[]): void => {
-          console.log('Updates found:');
-          console.log(JSON.stringify(res));
+          console.log('Updates found:', JSON.stringify(res));
           return;
         }
       )
