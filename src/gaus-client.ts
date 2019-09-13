@@ -158,7 +158,11 @@ export class GausClient {
       );
   }
 
-  report(deviceAuthParameters: GausDeviceAuthParameters, report: GausReport): Promise<void> {
+  report(
+    deviceAuthParameters: GausDeviceAuthParameters,
+    report: GausReport,
+    headers: GausRequestHeader[] = []
+  ): Promise<void> {
     if (!report || !report.data || !report.header || !report.version) {
       return Promise.reject('In parameter(s) not defined');
     }
@@ -167,18 +171,20 @@ export class GausClient {
       .then(
         (): Promise<GausSession> => {
           if (!this._session) {
-            return this._authenticate(deviceAuthParameters);
+            return this._authenticate(deviceAuthParameters, headers);
           }
           return Promise.resolve(this._session);
         }
       )
       .then(
         (): Promise<void> =>
-          this._reportTry(report).catch(
+          this._reportTry(report, headers).catch(
             (error: any): Promise<void> => {
               if (error.statusCode && (error.statusCode === 401 || error.statusCode === 403)) {
                 this._session = null;
-                return this._authenticate(deviceAuthParameters).then((): Promise<void> => this._reportTry(report));
+                return this._authenticate(deviceAuthParameters).then(
+                  (): Promise<void> => this._reportTry(report, headers)
+                );
               } else {
                 return Promise.reject(error);
               }
@@ -250,12 +256,13 @@ export class GausClient {
       .then((result): GausUpdate[] => result.body.updates);
   }
 
-  private _reportTry(report: GausReport): Promise<void> {
+  private _reportTry(report: GausReport, headers: GausRequestHeader[]): Promise<void> {
     return superagent
       .post(`${this._serverUrl}${this._reportEndpoint(this._session.productGUID, this._session.deviceGUID)}`)
       .send(report)
       .set('Authorization', `Bearer ${this._session.token}`)
       .set('accept', 'json')
+      .set(this._convertHeaders(headers))
       .then();
   }
 
