@@ -235,4 +235,27 @@ describe('GausClient', (): void => {
         }
       );
   });
+
+  it('report should use headers for authenticate and report', (done): void => {
+    new GausClient(FAKE_SERVER)
+      .report(FAKE_DEVICE_AUTH_PARAMS, FAKE_REPORT, FAKE_HEADERS)
+      .then(
+        (): void => {
+          expect(superAgentAuthenticateSpy).toBeCalledTimes(1);
+          expect(superAgentReportSpy).toBeCalledTimes(1);
+          FAKE_HEADERS.forEach(
+            (h): void => {
+              expect(superAgentAuthenticateSpy.mock.calls[0][0].headers[h.name.toLowerCase()]).toBe(h.value);
+              expect(superAgentReportSpy.mock.calls[0][0].headers[h.name.toLowerCase()]).toBe(h.value);
+            }
+          );
+          done();
+        }
+      )
+      .catch(
+        (error): void => {
+          done.fail(error);
+        }
+      );
+  });
 });
