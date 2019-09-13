@@ -129,25 +129,26 @@ export class GausClient {
 
   checkForUpdates(
     deviceAuthParameters: GausDeviceAuthParameters,
-    updateParameters: GausUpdateParameter[] = []
+    updateParameters: GausUpdateParameter[] = [],
+    headers: GausRequestHeader[] = []
   ): Promise<GausUpdate[]> {
     return Promise.resolve()
       .then(
         (): Promise<GausSession> => {
           if (!this._session) {
-            return this._authenticate(deviceAuthParameters);
+            return this._authenticate(deviceAuthParameters, headers);
           }
           return Promise.resolve(this._session);
         }
       )
       .then(
         (): Promise<GausUpdate[]> =>
-          this._checkForUpdateTry(updateParameters).catch(
+          this._checkForUpdateTry(updateParameters, headers).catch(
             (error: any): Promise<GausUpdate[]> => {
               if (error.statusCode && (error.statusCode === 401 || error.statusCode === 403)) {
                 this._session = null;
-                return this._authenticate(deviceAuthParameters).then(
-                  (): Promise<GausUpdate[]> => this._checkForUpdateTry(updateParameters)
+                return this._authenticate(deviceAuthParameters, headers).then(
+                  (): Promise<GausUpdate[]> => this._checkForUpdateTry(updateParameters, headers)
                 );
               } else {
                 return Promise.reject(error);
@@ -186,7 +187,10 @@ export class GausClient {
       );
   }
 
-  protected _authenticate(deviceAuthParameters: GausDeviceAuthParameters): Promise<GausSession> {
+  protected _authenticate(
+    deviceAuthParameters: GausDeviceAuthParameters,
+    headers: GausRequestHeader[] = []
+  ): Promise<GausSession> {
     this._authAttempts++;
 
     const requestBody = { deviceAuthParameters };
@@ -204,6 +208,7 @@ export class GausClient {
         .post(`${this._serverUrl}${this._AUTHENTICATE_ENDPOINT}`)
         .send(requestBody)
         .set('accept', 'json')
+        .set(this._convertHeaders(headers))
         .then(
           (result): GausSession => {
             this._authAttempts = 0; // reseting attempts as auth succeeded
@@ -226,7 +231,10 @@ export class GausClient {
     );
   }
 
-  private _checkForUpdateTry(updateParameters: GausUpdateParameter[]): Promise<GausUpdate[]> {
+  private _checkForUpdateTry(
+    updateParameters: GausUpdateParameter[],
+    headers: GausRequestHeader[]
+  ): Promise<GausUpdate[]> {
     const queryObject = updateParameters.reduce((acc: { [key: string]: string }, cur: GausUpdateParameter): {
       [key: string]: string;
     } => {
@@ -238,6 +246,7 @@ export class GausClient {
       .get(`${this._serverUrl}${this._checkForUpdateEndpoint(this._session.productGUID, this._session.deviceGUID)}`)
       .query(queryObject)
       .set('Authorization', `Bearer ${this._session.token}`)
+      .set(this._convertHeaders(headers))
       .then((result): GausUpdate[] => result.body.updates);
   }
 
