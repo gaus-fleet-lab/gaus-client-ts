@@ -21,7 +21,11 @@ describe('GausClient', (): void => {
   const postSpy = jest.spyOn(superagent, 'post');
   const getSpy = jest.spyOn(superagent, 'get');
 
-  const superAgentRequestSpy = jest.fn();
+  const superAgentRegisterSpy = jest.fn();
+  const superAgentAuthenticateSpy = jest.fn();
+  const superAgentCFUSpy = jest.fn();
+  const superAgentReportSpy = jest.fn();
+
   beforeEach((): void => {
     superagentMock.clearRoutes();
 
@@ -29,26 +33,37 @@ describe('GausClient', (): void => {
     superagentMock.post(
       `${FAKE_SERVER}/register`,
       (req: any): any => {
-        superAgentRequestSpy(req);
+        superAgentRegisterSpy(req);
         return { body: { pollInterval: FAKE_POLL_INTERVAL, deviceAuthParameters: FAKE_DEVICE_AUTH_PARAMS } };
       }
     );
     superagentMock.post(
       `${FAKE_SERVER}/authenticate`,
-      (): any => ({
-        body: {
-          deviceGUID: FAKE_DEVICE_GUID,
-          productGUID: FAKE_PRODUCT_GUID,
-          token: FAKE_TOKEN,
-        },
-      })
+      (req: any): any => {
+        superAgentAuthenticateSpy(req);
+        return {
+          body: {
+            deviceGUID: FAKE_DEVICE_GUID,
+            productGUID: FAKE_PRODUCT_GUID,
+            token: FAKE_TOKEN,
+          },
+        };
+      }
     );
-    superagentMock.post(`${FAKE_SERVER}/device/${FAKE_PRODUCT_GUID}/${FAKE_DEVICE_GUID}/report`, (): void => {});
+    superagentMock.post(
+      `${FAKE_SERVER}/device/${FAKE_PRODUCT_GUID}/${FAKE_DEVICE_GUID}/report`,
+      (req: any): void => {
+        superAgentReportSpy(req);
+      }
+    );
 
     // Get request mock
     superagentMock.get(
       `${FAKE_SERVER}/device/${FAKE_PRODUCT_GUID}/${FAKE_DEVICE_GUID}/check-for-updates`,
-      (): any => ({ body: { updates: {} } })
+      (req: any): any => {
+        superAgentCFUSpy(req);
+        return { body: { updates: {} } };
+      }
     );
 
     superagent
@@ -107,11 +122,11 @@ describe('GausClient', (): void => {
       .register(FAKE_PRODUCT_AUTH_PARAMS, FAKE_DEVICE_ID, FAKE_HEADERS)
       .then(
         (): void => {
-          expect(superAgentRequestSpy).toBeCalled();
-          expect(superAgentRequestSpy.mock.calls[0][0].url).toBe(`${FAKE_SERVER}/register`);
+          expect(superAgentRegisterSpy).toBeCalled();
+          expect(superAgentRegisterSpy.mock.calls[0][0].url).toBe(`${FAKE_SERVER}/register`);
           FAKE_HEADERS.forEach(
             (h): void => {
-              expect(superAgentRequestSpy.mock.calls[0][0].headers[h.name.toLowerCase()]).toBe(h.value);
+              expect(superAgentRegisterSpy.mock.calls[0][0].headers[h.name.toLowerCase()]).toBe(h.value);
             }
           );
           done();
@@ -152,6 +167,29 @@ describe('GausClient', (): void => {
             `${FAKE_SERVER}/device/${FAKE_PRODUCT_GUID}/${FAKE_DEVICE_GUID}/check-for-updates`
           );
 
+          done();
+        }
+      )
+      .catch(
+        (error): void => {
+          done.fail(error);
+        }
+      );
+  });
+
+  it('checkForUpdates should use headers for authenticate and check', (done): void => {
+    new GausClient(FAKE_SERVER)
+      .checkForUpdates(FAKE_DEVICE_AUTH_PARAMS, FAKE_UPDATE_TYPES, FAKE_HEADERS)
+      .then(
+        (): void => {
+          expect(superAgentAuthenticateSpy).toBeCalledTimes(1);
+          expect(superAgentCFUSpy).toBeCalledTimes(1);
+          FAKE_HEADERS.forEach(
+            (h): void => {
+              expect(superAgentAuthenticateSpy.mock.calls[0][0].headers[h.name.toLowerCase()]).toBe(h.value);
+              expect(superAgentCFUSpy.mock.calls[0][0].headers[h.name.toLowerCase()]).toBe(h.value);
+            }
+          );
           done();
         }
       )
