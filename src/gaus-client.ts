@@ -85,6 +85,11 @@ export interface GausUpdateParameter {
   value: GausUpdateParameterValue;
 }
 
+export interface GausRequestHeader {
+  name: string;
+  value: string;
+}
+
 export class GausClient {
   private _serverUrl: string;
   private _session: GausSession;
@@ -99,7 +104,11 @@ export class GausClient {
     this._serverUrl = serverUrl;
   }
 
-  register(productAuthParameters: GausProductAuthParameters, deviceId: UserDeviceId): Promise<GausDeviceConfiguration> {
+  register(
+    productAuthParameters: GausProductAuthParameters,
+    deviceId: UserDeviceId,
+    headers: GausRequestHeader[] = []
+  ): Promise<GausDeviceConfiguration> {
     const requstBody = { productAuthParameters, deviceId };
     if (
       !requstBody.productAuthParameters ||
@@ -114,6 +123,7 @@ export class GausClient {
       .post(`${this._serverUrl}${this._REGISTER_ENDPOINT}`)
       .send(requstBody)
       .set('accept', 'json')
+      .set(this._convertHeaders(headers))
       .then((result): GausDeviceConfiguration => result.body);
   }
 
@@ -204,6 +214,16 @@ export class GausClient {
     } else {
       return Promise.reject('Authentication failed: Exeeded max number of auth retries');
     }
+  }
+
+  private _convertHeaders(headers: GausRequestHeader[]): { [key: string]: string } {
+    return headers.reduce(
+      (acc, h): { [key: string]: string } => ({
+        ...acc,
+        [h.name]: h.value,
+      }),
+      {}
+    );
   }
 
   private _checkForUpdateTry(updateParameters: GausUpdateParameter[]): Promise<GausUpdate[]> {
